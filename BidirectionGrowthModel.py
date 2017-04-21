@@ -89,7 +89,7 @@ def generate_next(step_no, pos_current, pos_previous, v_bi):
         step = v0 * random.uniform(0.8, 1.2)
         dir1 = np.array(pos_current[i][3:6])
         grad = gradient(pos_previous[:, 0:3], pos_current[i][0:3])
-        err1 = np.array([random.uniform(-1.0, 1.0), random.gauss(0.785, 0.785), random.gauss(0.0, 1)])
+        err1 = np.array([random.uniform(-1.0, 1.0), random.gauss(err1_theta, err1_theta), random.gauss(0.0, 1)])
 
         strength = math.sqrt(grad[0] ** 2 + grad[1] ** 2 + grad[2] ** 2)
         if strength > 0.001:
@@ -101,13 +101,15 @@ def generate_next(step_no, pos_current, pos_previous, v_bi):
         cos = np.sum(grad1 * dir1)
         if cos > 0.0 or np.array_equal(grad1, np.array([0., 0., 0.])):
             grad[1] = grad[1] / rad
-            dir2 = dir1 + s1 * (grad1 + err1)
+            #dir2 = dir1 + s1 * (grad1 + err1)
+            dir2 = dir1 + s1 * grad1 + err1
         else:
             # re-orient the pull direction in the direction of growth
             R = dir1[1] * grad1[2] - dir1[2] * grad1[1]
             R = 1.0 - 2 * int(R < 0.0)
             grad1[1:3] = (-cos * dir1[1:3] + math.sqrt(1 - cos ** 2) * np.array([-R * dir1[2], R * dir1[1]]))
-            dir2 = dir1 + s1 * (grad1 + err1)
+            #dir2 = dir1 + s1 * (grad1 + err1)
+            dir2 = dir1 + s1 * grad1 + err1
 
         l1 = math.sqrt(dir2[0] ** 2 + dir2[1] ** 2 + dir2[2] ** 2)
         dir2 = dir2 / l1
@@ -168,7 +170,6 @@ def generate_next(step_no, pos_current, pos_previous, v_bi):
         #     reset_nodes = elevenCol
         #     if np.array_equal(reset_nodes, pos_new_full[0]):
         #         pos_new_full = np.delete(pos_new_full, 0, 0)
-
         i += 1
     return pos_new_full
 
@@ -183,7 +184,7 @@ def generate_next_back(step_no, pos_current, pos_previous, v_bi):
         step = v0 * random.uniform(0.8, 1.2)
         dir1 = np.array(pos_current[i][3:6])
         grad = gradient(pos_previous[:, 0:3], pos_current[i][0:3])
-        err1 = np.array([random.uniform(-1.0, 1.0), random.gauss(0.785, 0.785), random.gauss(0.0, 1)])
+        err1 = np.array([random.uniform(-1.0, 1.0), random.gauss(err1_theta, err1_theta), random.gauss(0.0, 1)])
 
         strength = math.sqrt(grad[0] ** 2 + grad[1] ** 2 + grad[2] ** 2)
         if strength > 0.001:
@@ -195,13 +196,15 @@ def generate_next_back(step_no, pos_current, pos_previous, v_bi):
 
         if cos > 0.0 or np.array_equal(grad1, np.array([0., 0., 0.])):
             grad[1] = grad[1] / rad
-            dir2 = dir1 + s2 * (grad1 + err1)
+            #dir2 = dir1 + s2 * (grad1 + err1)
+            dir2 = dir1 + s2 * grad1 + err1
         else:
             # re-orient the pull direction in the direction of growth
             R = dir1[1] * grad1[2] - dir1[2] * grad1[1]
             R = 1.0 - 2 * int(R < 0.0)
             grad1[1:3] = (-cos * dir1[1:3] + math.sqrt(1 - cos ** 2) * np.array([-R * dir1[2], R * dir1[1]]))
-            dir2 = dir1 + s2 * (grad1 + err1)
+            #dir2 = dir1 + s2 * (grad1 + err1)
+            dir2 = dir1 + s2 * grad1 + err1
 
         l1 = math.sqrt(dir2[0] ** 2 + dir2[1] ** 2 + dir2[2] ** 2)
         dir2 = dir2 / l1
@@ -374,31 +377,34 @@ def GrowthRateSaver(z_growth):
 k0 = 5
 k3 = 0.001
 k5 = 1
-s1 = 5.0e-2      # sensitivity to concentration gradients from forward direction
-s2 = 5.0e-2      # sensitivity to concentration gradients from backward direction
+s1 = 5.0e-2             # Sensitivity to concentration gradients from forward direction
+s2 = 5.0e-2             # Sensitivity to concentration gradients from backward direction
 
+v0 = 15                 # Base growth rate
+v0_grad = 0.008         # Growth rate based on gradient strength
+tau = 150.0             # Time constant for growth rate
+err1_theta =  0.785     # Direction perturbation term in theta
+v_bi = 1                # Chemical effect of bidirectional growth: 1 at beginning
 
-v0 = 15             # base growth rate
-v0_grad = 0.008     # growth rate based on gradient strength
+tau_b = 20              # Time constant for branching rate
+P = 0                   # Branching probability at infinite: 0 means no branching
+B1 = 0.1                # Branching condition 1: Branching may happen if probability value greater than B1
+B2 = 0.15               # Branching condition 2: Branching may happen if random uniform term greater than B2
 
-tau = 150.0  # Time constant for growth rate
-branch_tau = 20  # Time constant for branching rate
-v_bi = 1  # Chemical effect of bidirectional growth: 1 at beginning,
+total_step = 10         # Total simulation step: each step is 0.03 days
+cell_no = 20            # Total cell number in forward direction
+cell_no_b = cell_no     # Total cell number in backward direction
 
-total_step = 30
+rad = 50.0              # Inner radius of microcolumn
+z_fwd = 0               # Initial seeding position in z direction for forward growth
+z_bw = 500              # Initial seeding position in z direction for backward growth (length of the tube)
 
-cell_no = 500
-cell_no_b = cell_no
-
-z_fwd = 0
-z_bw = 500
-
-rad = 50.0  # inner radius of microcolumn
-
-#Create empty array
+#Create zeros
 elevenCol = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 threeCol = np.array([0, 0, 0])
 z_growth = threeCol
+branch_step = 0
+branch_step_b = 0
 
 
 
@@ -426,16 +432,15 @@ pos_current_b = pos_1b
 pos_previous_b = pos0_b
 #pos_previous_b = pos_1b  # NEED DISCUSSION
 
-branch_step = 0
-branch_step_b = 0
+
 
 for step_no in range(2, total_step):
     print step_no
     original_length = len(pos_current)
     a = 0
     while a < len(pos_current):
-        p = 0 * (1 - math.exp(-(step_no - branch_step) * 0.3 / (10)))
-        if (p >= 0.1 and random.uniform(0, 1) > 0.15):
+        p = P * (1 - math.exp(-(step_no - branch_step) * 0.3 / (tau_b)))
+        if (p >= B1 and random.uniform(0, 1) > B2):
             insert_array = np.hstack((pos_current[a][0:10], 2))
             pos_current = np.insert(pos_current, a + 1, insert_array, 0)
             a += 1
@@ -459,8 +464,8 @@ for step_no in range(2, total_step):
     original_length_b = len(pos_current_b)
     a_b = 0
     while a_b < len(pos_current_b):
-        p_b = 0 * (1 - math.exp(-(step_no - branch_step_b) * 0.3 / (10)))
-        if (p_b >= 0.1 and random.uniform(0, 1) > 0.15):
+        p_b = P * (1 - math.exp(-(step_no - branch_step_b) * 0.3 / (tau_b)))
+        if (p_b >= B1 and random.uniform(0, 1) > B2):
             insert_array_b = np.hstack((pos_current_b[a_b][0:10], 2))
             pos_current_b = np.insert(pos_current_b, a_b + 1, insert_array_b, 0)
             a_b += 1
@@ -508,6 +513,6 @@ for step_no in range(2, total_step):
 endtime = time.clock()
 print('Loop time = ' + str(endtime - starttime) + 's')
 
-plotter(pos_all,pos_all_b)
+#plotter(pos_all,pos_all_b)
 #pos_saver(pos_all,pos_all_b)
 
