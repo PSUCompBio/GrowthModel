@@ -8,17 +8,18 @@ import matplotlib as mpl
 import scipy.io as sio
 import time
 
-#  start of the program
+
 # Define the initial positions
 def initial_pos(cell_no, rad, Z):
     # 0    1    2    3        4        5       6       7        8              9          10
     # r  theta  z  dir_r  dir_theta  dir_z  cell_no  step  previous_node  current_node  branch_no
-    pos0 = elevenCol
+    pos0 = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
     for i in range(cell_no):
+
         pos_initial = np.array([[rad * random.uniform(0, 1), 2 * math.pi * random.uniform(0, 1),
                                  rad * random.uniform(-1, 0) + Z, 0, 0, 1, i, 0, 0, 0, 1]])
         pos0 = np.vstack((pos0, pos_initial))
-        reset_nodes = elevenCol
+        reset_nodes = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         if np.array_equal(reset_nodes, pos0[0]):
             pos0 = np.delete(pos0, 0, 0)
     return pos0
@@ -64,7 +65,7 @@ def gradient(pos_previous, pos_current):
         -((pos_previous[:, 2] - pos_current[2]) ** 2) / k5)
 
     # Calculate the gradients
-    grad = threeCol
+    grad = np.array([0.0, 0.0, 0.0])
     # gradient in r direction
     posx = pos_previous[:, 0] - pos_current[0]
     Grad_2 = -1 * sp.jv(1, posx)
@@ -80,11 +81,11 @@ def gradient(pos_previous, pos_current):
 
 #Find the new position in forward direction
 def generate_next(step_no, pos_current, pos_previous, v_bi):
-    pos_new_full = elevenCol
-    i = 0
-    current_length = len(pos_current)
 
-    while i < current_length:
+    pos_new_full = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    i = 0
+    node_counter = pos_current[-1][9]
+    while i < len(pos_current):
 
         step = v0 * random.uniform(0.8, 1.2)
         dir1 = np.array(pos_current[i][3:6])
@@ -95,19 +96,19 @@ def generate_next(step_no, pos_current, pos_previous, v_bi):
         if strength > 0.001:
             grad1 = grad / strength
         else:
-            grad1 = threeCol
-            grad = threeCol
+            grad1 = np.array([0., 0., 0.])
+            grad = np.array([0., 0., 0.])
 
         cos = np.sum(grad1 * dir1)
         if cos > 0.0 or np.array_equal(grad1, np.array([0., 0., 0.])):
             grad[1] = grad[1] / rad
-            dir2 = dir1 + s1 * (grad1 + err1)
+            dir2 = dir1 + sens1 * (grad1 + err1)
         else:
             # re-orient the pull direction in the direction of growth
             R = dir1[1] * grad1[2] - dir1[2] * grad1[1]
             R = 1.0 - 2 * int(R < 0.0)
             grad1[1:3] = (-cos * dir1[1:3] + math.sqrt(1 - cos ** 2) * np.array([-R * dir1[2], R * dir1[1]]))
-            dir2 = dir1 + s1 * (grad1 + err1)
+            dir2 = dir1 + sens2 * (grad1 + err1)
 
         l1 = math.sqrt(dir2[0] ** 2 + dir2[1] ** 2 + dir2[2] ** 2)
         dir2 = dir2 / l1
@@ -123,13 +124,15 @@ def generate_next(step_no, pos_current, pos_previous, v_bi):
 
         # Check overlap of tips(only check tips' r,theta,z), ingore the middle section
 
+
+
         # make uTENN grow out after reaching the end
         if pos2[2] <= z_bw:
             if abs(pos2[0]) <= rad:
                 pos2_full = np.hstack((pos2, dir2, pos_current[i][6], step_no, pos_current[i][9], node_counter + 1, pos_current[i][10]))
                 initial_node[cell_number] = node_counter + 1
                 pos_new_full = np.vstack((pos_new_full, pos2_full))
-                reset_nodes = elevenCol
+                reset_nodes = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
                 if np.array_equal(reset_nodes, pos_new_full[0]):
                     pos_new_full = np.delete(pos_new_full, 0, 0)
             else:
@@ -139,14 +142,15 @@ def generate_next(step_no, pos_current, pos_previous, v_bi):
                 pos2_full = np.hstack((pos2, dir2, pos_current[i][6], step_no, pos_current[i][9], node_counter + 1, pos_current[i][10]))
                 initial_node[cell_number] = node_counter + 1
                 pos_new_full = np.vstack((pos_new_full, pos2_full))
-                reset_nodes = elevenCol
+                # reset_nodes = np.array([0, 0, 0, 0, 0, 0])
+                reset_nodes = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
                 if np.array_equal(reset_nodes, pos_new_full[0]):
                     pos_new_full = np.delete(pos_new_full, 0, 0)
         else:
             pos2_full = np.hstack((pos2, dir2, pos_current[i][6], step_no, pos_current[i][9], node_counter + 1, pos_current[i][10]))
             initial_node[cell_number] = node_counter + 1
             pos_new_full = np.vstack((pos_new_full, pos2_full))
-            reset_nodes = elevenCol
+            reset_nodes = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
             if np.array_equal(reset_nodes, pos_new_full[0]):
                 pos_new_full = np.delete(pos_new_full, 0, 0)
 
@@ -155,7 +159,7 @@ def generate_next(step_no, pos_current, pos_previous, v_bi):
         #     pos2_full = np.hstack((pos2, dir2, pos_current[i][6], step_no, pos_current[i][9], node_counter + 1, pos_current[i][10]))
         #     initial_node[cell_number] = node_counter + 1
         #     pos_new_full = np.vstack((pos_new_full, pos2_full))
-        #     reset_nodes = elevenCol
+        #     reset_nodes = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         #     if np.array_equal(reset_nodes, pos_new_full[0]):
         #         pos_new_full = np.delete(pos_new_full, 0, 0)
         # else:
@@ -165,7 +169,8 @@ def generate_next(step_no, pos_current, pos_previous, v_bi):
         #     pos2_full = np.hstack((pos2, dir2, pos_current[i][6], step_no, pos_current[i][9], node_counter + 1, pos_current[i][10]))
         #     initial_node[cell_number] = node_counter + 1
         #     pos_new_full = np.vstack((pos_new_full, pos2_full))
-        #     reset_nodes = elevenCol
+        #     # reset_nodes = np.array([0, 0, 0, 0, 0, 0])
+        #     reset_nodes = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         #     if np.array_equal(reset_nodes, pos_new_full[0]):
         #         pos_new_full = np.delete(pos_new_full, 0, 0)
 
@@ -176,10 +181,8 @@ def generate_next(step_no, pos_current, pos_previous, v_bi):
 
 #Find the new position in backward direction
 def generate_next_back(step_no, pos_current, pos_previous, v_bi):
-    pos_new_full = elevenCol
-    i = 0
-    current_length = len(pos_current)
-    while i < current_length:
+    pos_new_full = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    for i in range(len(pos_current)):
         step = v0 * random.uniform(0.8, 1.2)
         dir1 = np.array(pos_current[i][3:6])
         grad = gradient(pos_previous[:, 0:3], pos_current[i][0:3])
@@ -189,19 +192,19 @@ def generate_next_back(step_no, pos_current, pos_previous, v_bi):
         if strength > 0.001:
             grad1 = grad / strength
         else:
-            grad1 = threeCol
-            grad = threeCol
+            grad1 = np.array([0., 0., 0.])
+            grad = np.array([0., 0., 0.])
         cos = np.sum(grad1 * dir1)
 
         if cos > 0.0 or np.array_equal(grad1, np.array([0., 0., 0.])):
             grad[1] = grad[1] / rad
-            dir2 = dir1 + s2 * (grad1 + err1)
+            dir2 = dir1 + sens1 * (grad1 + err1)
         else:
             # re-orient the pull direction in the direction of growth
             R = dir1[1] * grad1[2] - dir1[2] * grad1[1]
             R = 1.0 - 2 * int(R < 0.0)
             grad1[1:3] = (-cos * dir1[1:3] + math.sqrt(1 - cos ** 2) * np.array([-R * dir1[2], R * dir1[1]]))
-            dir2 = dir1 + s2 * (grad1 + err1)
+            dir2 = dir1 + sens2 * (grad1 + err1)
 
         l1 = math.sqrt(dir2[0] ** 2 + dir2[1] ** 2 + dir2[2] ** 2)
         dir2 = dir2 / l1
@@ -221,7 +224,8 @@ def generate_next_back(step_no, pos_current, pos_previous, v_bi):
                 initial_node_b[cell_number] = node_counter_b + 1
 
                 pos_new_full = np.vstack((pos_new_full, pos2_full))
-                reset_nodes = elevenCol
+                # reset_nodes = np.array([0, 0, 0, 0, 0, 0])
+                reset_nodes = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
                 if np.array_equal(reset_nodes, pos_new_full[0]):
                     pos_new_full = np.delete(pos_new_full, 0, 0)
             else:
@@ -234,7 +238,8 @@ def generate_next_back(step_no, pos_current, pos_previous, v_bi):
                 initial_node_b[cell_number] = node_counter_b + 1
 
                 pos_new_full = np.vstack((pos_new_full, pos2_full))
-                reset_nodes = elevenCol
+                # reset_nodes = np.array([0, 0, 0, 0, 0, 0])
+                reset_nodes = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
                 if np.array_equal(reset_nodes, pos_new_full[0]):
                     pos_new_full = np.delete(pos_new_full, 0, 0)
 
@@ -242,7 +247,7 @@ def generate_next_back(step_no, pos_current, pos_previous, v_bi):
             pos2_full = np.hstack((pos2, dir2, pos_current[i][6], step_no, pos_current[i][9], node_counter_b + 1, pos_current[i][10]))
             initial_node_b[cell_number] = node_counter_b + 1
             pos_new_full = np.vstack((pos_new_full, pos2_full))
-            reset_nodes = elevenCol
+            reset_nodes = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
             if np.array_equal(reset_nodes, pos_new_full[0]):
                 pos_new_full = np.delete(pos_new_full, 0, 0)
 
@@ -252,7 +257,8 @@ def generate_next_back(step_no, pos_current, pos_previous, v_bi):
         #     initial_node_b[cell_number] = node_counter_b + 1
         #
         #     pos_new_full = np.vstack((pos_new_full, pos2_full))
-        #     reset_nodes = elevenCol
+        #     # reset_nodes = np.array([0, 0, 0, 0, 0, 0])
+        #     reset_nodes = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         #     if np.array_equal(reset_nodes, pos_new_full[0]):
         #         pos_new_full = np.delete(pos_new_full, 0, 0)
         # else:
@@ -264,7 +270,8 @@ def generate_next_back(step_no, pos_current, pos_previous, v_bi):
         #     initial_node_b[cell_number] = node_counter_b + 1
         #
         #     pos_new_full = np.vstack((pos_new_full, pos2_full))
-        #     reset_nodes = elevenCol
+        #     # reset_nodes = np.array([0, 0, 0, 0, 0, 0])
+        #     reset_nodes = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         #     if np.array_equal(reset_nodes, pos_new_full[0]):
         #         pos_new_full = np.delete(pos_new_full, 0, 0)
 
@@ -338,69 +345,32 @@ def pos_saver(pos_all, pos_all_b):
 
 
 
-# Find the Growth Rate
-def GrowthRate(pos_current, pos_current_b):
-    z_current = pos_current[:, 2]
-    z_current_b = pos_current_b[:, 2]
-    # z_max = np.hstack((step_no, np.amax(z_current), np.amin(z_current_b)))  # backward min is the longest tip
-    # z_growth = np.vstack((z_growth, z_max))
-    z_mean = np.hstack((step_no, np.average(z_current), np.average(z_current_b)))
-    return z_mean
-
-
-def GrowthRateSaver(z_growth):
-    growth_rate = np.array([0, 0])
-    z = z_growth[:, 1]
-    for n in range(0, len(z) - 1):
-        growth = (z[n + 1] - z[n]) / 0.03
-        time = 0.03 * n
-        growth_full = np.hstack((time, growth))
-        growth_rate = np.vstack((growth_rate, growth_full))
-        reset_nodes = np.array([0, 0])
-        if np.array_equal(reset_nodes, growth_rate[0]):
-            growth_rate = np.delete(growth_rate, 0, 0)
-    np.savetxt('Bi_growthrate_50cells.txt', growth_rate)
-    plt.plot(growth_rate[:, 0], growth_rate[:, 1])
-    plt.ylabel('growth rate')
-    plt.title('Bidirection')
-    # plt.savefig('growthrate2.png', dpi=400, bbox_inches='tight', pad_inches=1)
-    plt.show()
-
-
-
 
 
 # Define all the parameters
-k0 = 5
 k3 = 0.001
+k0 = 5
 k5 = 1
-s1 = 5.0e-2      # sensitivity to concentration gradients from forward direction
-s2 = 5.0e-2      # sensitivity to concentration gradients from backward direction
+sens1 = 5.0e-2  # sensitivity to concentration gradients from fwd direction
+sens2 = 5.0e-2
+rad = 50.0  # inner radius of microcolumn
 
-
-v0 = 15             # base growth rate
-v0_grad = 0.008     # growth rate based on gradient strength
+v0 = 15  # base growth rate
+v0_grad = 0.008  # growth rate based on gradient strength
 
 tau = 150.0  # Time constant for growth rate
 branch_tau = 20  # Time constant for branching rate
 v_bi = 1  # Chemical effect of bidirectional growth: 1 at beginning,
 
-total_step = 30
+total_step = 10
 
-cell_no = 500
+cell_no = 20
 cell_no_b = cell_no
 
 z_fwd = 0
 z_bw = 500
 
-rad = 50.0  # inner radius of microcolumn
-
-#Create empty array
-elevenCol = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-threeCol = np.array([0, 0, 0])
-z_growth = threeCol
-
-
+z_growth = np.array([0, 0, 0])
 
 starttime = time.clock()
 
@@ -417,25 +387,33 @@ pos_1 = generate_next(step_no, pos0, pos0, v_bi)
 # After step 1, pos_current different from pos_previous
 pos_all = np.vstack((pos0, pos_1))
 pos_current = pos_1
-pos_previous = pos0
-#pos_previous = pos_1  # NEED DISCUSSION
+# pos_previous = pos0
+pos_previous = pos_1  # NEED DISCUSSION
 
 pos_1b = generate_next_back(step_no, pos0_b, pos0_b, v_bi)
 pos_all_b = np.vstack((pos0_b, pos_1b))
 pos_current_b = pos_1b
-pos_previous_b = pos0_b
-#pos_previous_b = pos_1b  # NEED DISCUSSION
+# pos_previous_b = pos0_b
+pos_previous_b = pos_1b  # NEED DISCUSSION
 
 branch_step = 0
 branch_step_b = 0
 
 for step_no in range(2, total_step):
+    #starttime = time.clock()
     print step_no
+    # print tau
     original_length = len(pos_current)
     a = 0
     while a < len(pos_current):
-        p = 0 * (1 - math.exp(-(step_no - branch_step) * 0.3 / (10)))
+        #    print 'a'
+        #    print a
+
+        # p = 1*(1-math.exp(-i*0.3/(tau)))
+        p = 1 * (1 - math.exp(-(step_no - branch_step) * 0.3 / (10)))
         if (p >= 0.1 and random.uniform(0, 1) > 0.15):
+            # p = random.uniform(0,1)
+            # if (p > 0.1 and random.uniform(0,1)>1):
             insert_array = np.hstack((pos_current[a][0:10], 2))
             pos_current = np.insert(pos_current, a + 1, insert_array, 0)
             a += 1
@@ -456,11 +434,16 @@ for step_no in range(2, total_step):
     pos_current = pos_new
 
     ######################################################################
+
     original_length_b = len(pos_current_b)
     a_b = 0
     while a_b < len(pos_current_b):
-        p_b = 0 * (1 - math.exp(-(step_no - branch_step_b) * 0.3 / (10)))
+
+        # p = 1*(1-math.exp(-i*0.3/(tau)))
+        p_b = 1 * (1 - math.exp(-(step_no - branch_step_b) * 0.3 / (10)))
         if (p_b >= 0.1 and random.uniform(0, 1) > 0.15):
+            # p = random.uniform(0,1)
+            # if (p > 0.1 and random.uniform(0,1)>1):
             insert_array_b = np.hstack((pos_current_b[a_b][0:10], 2))
             pos_current_b = np.insert(pos_current_b, a_b + 1, insert_array_b, 0)
             a_b += 1
@@ -480,34 +463,53 @@ for step_no in range(2, total_step):
     # pos_previous_b = pos_new_b  #NEED DISCUSSION
     pos_current_b = pos_new_b
 
+#Print running time
+endtime=time.clock()
+print('Loop time = '+str(endtime-starttime)+'s')
+
+    ########################################################################
+    # z_current = pos_current[:, 2]
+    # z_current_b = pos_current_b[:, 2]
+    # z_max = np.hstack((step_no, np.amax(z_current), np.amin(z_current_b)))  # backward min is the longest tip
+    #
+    # z_growth = np.vstack((z_growth, z_max))
+    # reset_nodes = np.array([0, 0, 0])
+    # if np.array_equal(reset_nodes, z_growth[0]):
+    #     z_growth = np.delete(z_growth, 0, 0)  # save the longest tips of forward and backward
+
     #if v_bi == 1:
         # if abs(z_max[1] - z_max[2]) < 200:
         #if step_no > 100:
             #v_bi = 4
             #tau = 60
 
+            # if step_no < 400:
+            # if (step_no + 1) % 5 == 0:
+            #    plotter(pos_all,pos_all_b)
+            #    pos_saver(pos_all,pos_all_b)
 
-    # if step_no < 400:
-        # if (step_no + 1) % 5 == 0:
-        #    plotter(pos_all,pos_all_b)
-        #    pos_saver(pos_all,pos_all_b)
 
-    ########################################################################
-
-#     GrowthRateMean = GrowthRate(pos_current,pos_current_b)
-#     z_growth = np.vstack((z_growth, GrowthRateMean))
-#     reset_nodes = np.array([0, 0, 0])
-#     if np.array_equal(reset_nodes, z_growth[0]):
-#         z_growth = np.delete(z_growth, 0, 0)  # save the longest tips of forward and backward
-#
-# GrowthRateSaver(z_growth) #check!
-
-    ########################################################################
-
-# Print running time
-endtime = time.clock()
-print('Loop time = ' + str(endtime - starttime) + 's')
-
-plotter(pos_all,pos_all_b)
+#plotter(pos_all,pos_all_b)
 #pos_saver(pos_all,pos_all_b)
 
+
+
+#Find the Growth Rate
+
+# growth_rate = np.array([0,0])
+# z = z_growth[:,1]
+
+# for n in range (0,len(z)-1):
+#   growth = (z[n+1]-z[n])/0.03
+#   time = 0.03 * n
+#   growth_full = np.hstack((time, growth))
+#   growth_rate = np.vstack((growth_rate, growth_full))
+#   reset_nodes = np.array([0, 0])
+#   if np.array_equal(reset_nodes, growth_rate[0]):
+#        growth_rate = np.delete(growth_rate, 0, 0)
+
+# np.savetxt('Bi_growthrate_50cells.txt', growth_rate)
+# plt.plot(growth_rate[:,0],growth_rate[:,1])
+# plt.ylabel('growth rate')
+# plt.title('Bidirection')
+# plt.savefig('growthrate2.png', dpi=400, bbox_inches='tight', pad_inches=1)
