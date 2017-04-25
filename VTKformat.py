@@ -2,7 +2,9 @@
 # Remember to change the input text files name
 
 import math
+import datetime
 
+print datetime.datetime.now()
 
 cellnumber = []         # Cell number: saved in column 6
 stepnumber = []         # Step number: saved in column 7
@@ -34,14 +36,13 @@ for line in content:
     uniquenumber1.append(line.split()[6] + '-' + line.split()[8])      # Create unique numbers for cell number and previous node
     stepnumber.append(line.split()[7])
 
-    r_fwd.append(line.split()[0])
-    theta_fwd.append(line.split()[1])
-    z_fwd.append(line.split()[2])
+    r_fwd.append(float(line.split()[0]))
+    theta_fwd.append(float(line.split()[1]))
+    z_fwd.append(float(line.split()[2]))
 
-x_fwd = [float(i) * math.cos(float(j)) for i in r_fwd for j in theta_fwd]
-y_fwd = [float(i) * math.sin(float(j)) for i in r_fwd for j in theta_fwd]
-z_fwd = [float(i) for i in z_fwd]
-
+x_fwd = [i * math.cos(j) for i, j in zip(r_fwd,z_fwd)]
+y_fwd = [i * math.sin(j) for i,j in zip(r_fwd,z_fwd)]
+z_fwd = [i for i in z_fwd]
 
 for i_fwd in uniquenumber1:
     new_row.append(uniquenumber.index(i_fwd))
@@ -79,13 +80,14 @@ for line in content_bw:
     uniquenumber1_bw.append(line.split()[6] + '-' + line.split()[8])
     stepnumber_bw.append(line.split()[7])
 
-    r_bw.append(line.split()[0])
-    theta_bw.append(line.split()[1])
-    z_bw.append(line.split()[2])
+    r_bw.append(float(line.split()[0]))
+    theta_bw.append(float(line.split()[1]))
+    z_bw.append(float(line.split()[2]))
 
-x_bw = [float(i) * math.cos(float(j)) for i in r_bw for j in theta_bw]
-y_bw = [float(i) * math.sin(float(j)) for i in r_bw for j in theta_bw]
-z_bw = [float(i) for i in z_bw]
+x_bw = [i * math.cos(j) for i, j in zip(r_bw,z_bw)]
+y_bw = [i * math.sin(j) for i,j in zip(r_bw,z_bw)]
+z_bw = [i for i in z_bw]
+
 
 for i_bw in uniquenumber1_bw:
     new_row_bw.append(uniquenumber_bw.index(i_bw))
@@ -109,7 +111,7 @@ counter = 0
 
 while counter < NoStep:
 # while counter < 2:
-
+    print counter
     new_x = []
     new_xb = []
     new_yb = []
@@ -135,7 +137,7 @@ while counter < NoStep:
             totaly = new_y + new_yb
             totalz = new_z + new_zb
             totalconnection = new_connection + [r + len(new_connection) for r in new_connectionb]
-            with open('step%s.vtk' %s,'wb') as output:
+            with open('Step%s.vtk' %s,'wb') as output:
                 output.write("# vtk DataFile Version 3.0\n")
                 output.write("%i Cells\n" %(NoCell+1))
                 output.write("ASCII\n")
