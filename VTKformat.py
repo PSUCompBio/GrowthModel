@@ -160,3 +160,5 @@ while counter < NoStep:
 
             counter +=1
             break
+
+print datetime.datetime.now()
