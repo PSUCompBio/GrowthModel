@@ -7,6 +7,8 @@ import scipy.special as sp
 import matplotlib as mpl
 import scipy.io as sio
 import time
+import threading
+import Queue
 
 #  start of the program
 # Define the initial positions
@@ -79,7 +81,7 @@ def gradient(pos_previous, pos_current):
 
 
 #Find the new position in forward direction
-def generate_next(step_no, pos_current, pos_previous, v_bi):
+def generate_next(step_no, pos_current, pos_previous, v_bi,q):
     pos_new_full = elevenCol
     i = 0
     current_length = len(pos_current)
@@ -171,12 +173,13 @@ def generate_next(step_no, pos_current, pos_previous, v_bi):
         #     if np.array_equal(reset_nodes, pos_new_full[0]):
         #         pos_new_full = np.delete(pos_new_full, 0, 0)
         i += 1
-    return pos_new_full
+    #return pos_new_full
+    q.put(pos_new_full)
 
 
 
 #Find the new position in backward direction
-def generate_next_back(step_no, pos_current, pos_previous, v_bi):
+def generate_next_back(step_no, pos_current, pos_previous, v_bi,q):
     pos_new_full = elevenCol
     i = 0
     current_length = len(pos_current)
@@ -272,7 +275,8 @@ def generate_next_back(step_no, pos_current, pos_previous, v_bi):
         #         pos_new_full = np.delete(pos_new_full, 0, 0)
 
         i += 1
-    return pos_new_full
+    #return pos_new_full
+    q.put(pos_new_full)
 
 
 
@@ -392,7 +396,7 @@ B1 = 0.1                # Branching condition 1: Branching may happen if probabi
 B2 = 0.15               # Branching condition 2: Branching may happen if random uniform term greater than B2
 
 total_step = 10         # Total simulation step: each step is 0.03 days
-cell_no = 20            # Total cell number in forward direction
+cell_no = 500            # Total cell number in forward direction
 cell_no_b = cell_no     # Total cell number in backward direction
 
 rad = 50.0              # Inner radius of microcolumn
@@ -419,14 +423,27 @@ initial_node = initial_nodes(cell_no)
 initial_node_b = initial_nodes_b(cell_no_b)
 
 # From step 0 to step 1, pos_current = pos_previous
-pos_1 = generate_next(step_no, pos0, pos0, v_bi)
+# pos_1 = generate_next(step_no, pos0, pos0, v_bi)
+q1_fwd = Queue.Queue()
+t1_fwd = threading.Thread(target=generate_next, args=(step_no, pos0, pos0, v_bi, q1_fwd))
+t1_fwd.daemon = True
+t1_fwd.start()
+pos_1 = q1_fwd.get()
+
 # After step 1, pos_current different from pos_previous
 pos_all = np.vstack((pos0, pos_1))
 pos_current = pos_1
 pos_previous = pos0
 #pos_previous = pos_1  # NEED DISCUSSION
 
-pos_1b = generate_next_back(step_no, pos0_b, pos0_b, v_bi)
+# From step 0 to step 1, backward growth
+#pos_1b = generate_next_back(step_no, pos0_b, pos0_b, v_bi)
+q1_bw = Queue.Queue()
+t1_bw = threading.Thread(target=generate_next, args=(step_no, pos0_b, pos0_b, v_bi, q1_bw))
+t1_bw.daemon = True
+t1_bw.start()
+pos_1b = q1_bw.get()
+
 pos_all_b = np.vstack((pos0_b, pos_1b))
 pos_current_b = pos_1b
 pos_previous_b = pos0_b
@@ -450,7 +467,27 @@ for step_no in range(2, total_step):
     else:
         branch_step = branch_step
 
-    pos_new = generate_next(step_no, pos_current, pos_previous, v_bi)
+
+
+    counter_fwd = 0
+    total_core = 2
+    qlist_fwd = [Queue.Queue() for i in range(total_core)]
+    unit_fwd = len(pos_current) // total_core
+    vlist_fwd = []
+    for n_core in range(total_core):
+        start = n_core * unit_fwd
+        end = start + unit_fwd
+
+        q_fwd = qlist_fwd[n_core]
+        t_new_fwd = threading.Thread(target=generate_next, args=(step_no, pos_current[start:end], pos_previous, v_bi, q_fwd))
+        t_new_fwd.daemon = True
+        t_new_fwd.start()
+        # print q.get()
+        vlist_fwd.append(q_fwd.get())
+
+    pos_new = np.vstack(vlist_fwd)
+
+    #pos_new = generate_next(step_no, pos_current, pos_previous, v_bi)
     pos_all = np.vstack((pos_all, pos_new))
 
     for m in range(len(pos_new)):
@@ -475,7 +512,25 @@ for step_no in range(2, total_step):
     else:
         branch_step_b = branch_step_b
 
-    pos_new_b = generate_next_back(step_no, pos_current_b, pos_previous_b, v_bi)
+    counter_bw = 0
+    total_core = 2
+    qlist_bw = [Queue.Queue() for i in range(total_core)]
+    unit_bw = len(pos_current_b) // total_core
+    vlist_bw = []
+    for n_core in range(total_core):
+        start = n_core * unit_bw
+        end = start + unit_bw
+
+        q_bw = qlist_bw[n_core]
+        t_new_bw = threading.Thread(target=generate_next, args=(step_no, pos_current_b[start:end], pos_previous_b, v_bi, q_bw))
+        t_new_bw.daemon = True
+        t_new_bw.start()
+        # print q.get()
+        vlist_bw.append(q_bw.get())
+
+    pos_new_b = np.vstack(vlist_bw)
+
+    #pos_new_b = generate_next_back(step_no, pos_current_b, pos_previous_b, v_bi,q)
     pos_all_b = np.vstack((pos_all_b, pos_new_b))
 
     for m in range(len(pos_new_b)):
@@ -512,6 +567,8 @@ for step_no in range(2, total_step):
 # Print running time
 endtime = time.clock()
 print('Loop time = ' + str(endtime - starttime) + 's')
+
+#500 cells 10 steps, 0 branch, 30.729136s
 
 #plotter(pos_all,pos_all_b)
 #pos_saver(pos_all,pos_all_b)

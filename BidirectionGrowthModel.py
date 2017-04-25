@@ -392,7 +392,7 @@ B1 = 0.1                # Branching condition 1: Branching may happen if probabi
 B2 = 0.15               # Branching condition 2: Branching may happen if random uniform term greater than B2
 
 total_step = 10         # Total simulation step: each step is 0.03 days
-cell_no = 20            # Total cell number in forward direction
+cell_no = 500            # Total cell number in forward direction
 cell_no_b = cell_no     # Total cell number in backward direction
 
 rad = 50.0              # Inner radius of microcolumn
@@ -512,6 +512,8 @@ for step_no in range(2, total_step):
 # Print running time
 endtime = time.clock()
 print('Loop time = ' + str(endtime - starttime) + 's')
+
+#500 cells 10 steps, 0 branch, 32.333122s
 
 #plotter(pos_all,pos_all_b)
 #pos_saver(pos_all,pos_all_b)
